@@ -77,8 +77,9 @@ async def aspect_modifiers(event_and_context_queue):
                 active_modifiers.add(event.code)
             elif event.code in active_modifiers:
                 active_modifiers.remove(event.code)
-            active_modifiers_prefix = ''.join(f'{MODIFIERS[m]}-'
-                                              for m in active_modifiers)
+            active_modifiers_prefix = ''.join(f'{m}-'
+                                              for c, m in MODIFIERS.items()
+                                              if c in active_modifiers)
             continue
         yield event, {**context,
                       'active_modifiers': active_modifiers,
@@ -118,8 +119,8 @@ CUSTOM_REPLACEMENT_TABLE = {
     'shift-backspace': 'backspace',  # keyboard firmware bug
 }
 CUSTOM_SKIPLIST = {
-    'meta-alt-f11',
-    'meta-alt-f12',
+    'alt-meta-f11',
+    'alt-meta-f12',
 }
 
 #SINGLES = evdev.util.find_ecodes_by_regex(r'KEY_.')
