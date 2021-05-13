@@ -253,6 +253,7 @@ class StatsDB:
                 for ngram, count in self._in_memory_counters[n - 1].items():
                     con.execute(q, ngram + (count, count) + ngram)
         self._unsaved_actions = 0
+        self._in_memory_counters = [collections.Counter() for i in range(3)]
         click.echo('Saved.')
 
 
