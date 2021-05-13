@@ -10,7 +10,7 @@
         let pkgs = nixpkgs.legacyPackages.${system}; in
         rec {
           ngram-keylogger = pkgs.python3Packages.buildPythonPackage {
-            pname = "ngram-keylogger: typing stats that don't leak passwords";
+            pname = "ngram-keylogger";
             version = "0.0.1";
             src = ./.;
             propagatedBuildInputs = with pkgs; [
