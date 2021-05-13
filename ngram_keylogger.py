@@ -152,7 +152,7 @@ def short_key_name(key_code):
 
 
 # TODO: do another layer of aspectful filtering, but this time on results?
-async def action_generator(event_and_context_queue):
+async def action_generator_(event_and_context_queue):
     """
     Converts evdev events to sequences of actions like
     'a', 'Y', '.', '&', 'control-shift-c', 'Left+' or 'close window'.
@@ -181,6 +181,34 @@ async def action_generator(event_and_context_queue):
         if short in CUSTOM_REPLACEMENT_TABLE:
             short = CUSTOM_REPLACEMENT_TABLE[short]
         yield short + ('+' if repeat else '')
+
+
+QWERTY = "`QWERTYUIOP{}ASDFGHJKL:ZXCVBNM<>~qwertyuiop[]asdfghjkl;zxcvbmn,.'\""
+JCUKEN = "ЁЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЯЧСМИТЬБЮёйцукенгшщзхъфывапролджячсмитьбюэЭ"
+RUSSIAN_MAP = {en: f'ru-{ru}' for en, ru in zip(QWERTY, JCUKEN)}
+RUSSIAN_MAP.update({en: ru for en, ru in zip('!@#$%^&*()/\\',
+                                             '!"№;%:?*().,')})
+
+
+async def post_aspect_t184256_russian(gen):
+    # FIXME: doesn't work with repeats
+    while True:
+        # normal operation
+        async for action in gen:
+            if action not in ('control-compose', 'control-shift-compose'):
+                yield action  # normal operation
+            else:
+                break  # to russian handling
+        # russian
+        async for action in gen:
+            if action in RUSSIAN_MAP:
+                yield RUSSIAN_MAP[action]
+                break  # to normal handling
+            elif f'{action}+' in RUSSIAN_MAP:
+                yield RUSSIAN_MAP[action[:-1]] + '+'
+                break  # to normal handling
+
+action_generator = lambda q: post_aspect_t184256_russian(action_generator_(q))
 
 
 # Stats database
