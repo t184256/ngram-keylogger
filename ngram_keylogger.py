@@ -57,14 +57,14 @@ async def aspect_repeating(event_and_context_queue):
 
 
 MODIFIERS = {
-    evdev.ecodes.KEY_LEFTCTRL: 'Control',
-    evdev.ecodes.KEY_LEFTALT: 'Alt',
-    evdev.ecodes.KEY_LEFTMETA: 'Meta',
-    evdev.ecodes.KEY_LEFTSHIFT: 'Shift',
-    evdev.ecodes.KEY_RIGHTCTRL: 'Control',
-    evdev.ecodes.KEY_RIGHTALT: 'Alt',
-    evdev.ecodes.KEY_RIGHTMETA: 'Meta',
-    evdev.ecodes.KEY_RIGHTSHIFT: 'Shift',
+    evdev.ecodes.KEY_LEFTCTRL: 'control',
+    evdev.ecodes.KEY_LEFTALT: 'alt',
+    evdev.ecodes.KEY_LEFTMETA: 'meta',
+    evdev.ecodes.KEY_LEFTSHIFT: 'shift',
+    evdev.ecodes.KEY_RIGHTCTRL: 'control',
+    evdev.ecodes.KEY_RIGHTALT: 'alt',
+    evdev.ecodes.KEY_RIGHTMETA: 'meta',
+    evdev.ecodes.KEY_RIGHTSHIFT: 'shift',
 }
 
 
@@ -104,21 +104,22 @@ PRINTABLES = ALPHABET + DIGITS + PUNCTUATION
 SHIFTED_PRINTABLES = ALPHABET.upper() + SHIFTED_DIGITS + SHIFTED_PUNCTUATION
 assert len(PRINTABLES) == len(SHIFTED_PRINTABLES)
 SHIFTED_REPLACEMENT_TABLE = {
-    f'Shift-{c}': shifted_c
+    f'shift-{c}': shifted_c
     for c, shifted_c in zip(PRINTABLES, SHIFTED_PRINTABLES)
 }
-CONTROL_REPLACEMENT_TABLE = {f'Control-{c}': f'^{c.upper()}' for c in ALPHABET}
+CONTROL_REPLACEMENT_TABLE = {f'control-{c}': f'^{c.upper()}' for c in ALPHABET}
 CUSTOM_REPLACEMENT_TABLE = {
-    'Alt-Meta-q': 'workspace-1',
-    'Alt-Meta-w': 'workspace-2',
-    'Alt-Meta-f': 'workspace-3',
-    'Alt-Meta-p': 'workspace-4',
-    'Alt-Meta-g': 'workspace-5',
-    'Alt-Meta-y': 'window-move-to',
+    'alt-meta-q': 'workspace-1',
+    'alt-meta-w': 'workspace-2',
+    'alt-meta-f': 'workspace-3',
+    'alt-meta-p': 'workspace-4',
+    'alt-meta-g': 'workspace-5',
+    'alt-meta-y': 'window-move-to',
+    'shift-backspace': 'backspace',  # keyboard firmware bug
 }
 CUSTOM_SKIPLIST = {
-    'Meta-Alt-f11',
-    'Meta-Alt-f12',
+    'meta-alt-f11',
+    'meta-alt-f12',
 }
 
 #SINGLES = evdev.util.find_ecodes_by_regex(r'KEY_.')
@@ -153,7 +154,7 @@ def short_key_name(key_code):
 async def action_generator(event_and_context_queue):
     """
     Converts evdev events to sequences of actions like
-    'a', 'Y', '.', '&', 'Control-Shift-c', 'Left+' or 'close window'.
+    'a', 'Y', '.', '&', 'control-shift-c', 'Left+' or 'close window'.
     """
     gen = unwind_queue(event_and_context_queue)
     gen = aspect_keys_only(gen)
