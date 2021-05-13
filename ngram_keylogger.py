@@ -107,6 +107,7 @@ SHIFTED_REPLACEMENT_TABLE = {
     f'Shift-{c}': shifted_c
     for c, shifted_c in zip(PRINTABLES, SHIFTED_PRINTABLES)
 }
+CONTROL_REPLACEMENT_TABLE = {f'Control-{c}': f'^{c.upper()}' for c in ALPHABET}
 CUSTOM_REPLACEMENT_TABLE = {
     'Alt-Meta-q': 'workspace-1',
     'Alt-Meta-w': 'workspace-2',
@@ -173,6 +174,8 @@ async def action_generator(event_and_context_queue):
             continue
         if short in SHIFTED_REPLACEMENT_TABLE:
             short = SHIFTED_REPLACEMENT_TABLE[short]
+        if short in CONTROL_REPLACEMENT_TABLE:
+            short = CONTROL_REPLACEMENT_TABLE[short]
         if short in CUSTOM_REPLACEMENT_TABLE:
             short = CUSTOM_REPLACEMENT_TABLE[short]
         yield short + ('+' if repeat else '')
