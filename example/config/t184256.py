@@ -17,6 +17,11 @@ CUSTOM_REPLACEMENT_TABLE = {
     'alt-meta-f': 'workspace-3',
     'alt-meta-p': 'workspace-4',
     'alt-meta-g': 'workspace-5',
+    'alt-meta-6': 'run-command',
+    'alt-meta-7': 'toggle-screen',
+    'alt-meta-8': 'lock-screen',
+    'alt-meta-9': 'sway-reload',
+    'alt-meta-0': 'window-close',
     'shift-backspace': 'backspace',  # keyboard firmware bug
 }
 
@@ -34,19 +39,20 @@ def context_name(t):
     if re.match('.*Mozilla Firefox$', t):
         return 'browser'
 
-    m = re.match(rf'.* > vi > \[(\w+)\].* > .* \[(INS|RPL|VIL|VIB)\]$', t)
+    m = re.match(r'.* > vi > \[(\w+)\].* > .* \[(INS|RPL|VIL|VIB)\]$', t)
     if m:
         return f'term:vi:{m.group(1)}:{m.group(2).lower()}'
-    m = re.match(rf'.* > vi > \[(\w+)\].* > .*', t)
+    m = re.match(r'.* > vi > \[(\w+)\].* > .*', t)
     if m:
         return f'term:vi:{m.group(1)}:nrm'
     if re.match(r'.* > vi.*', t):
         return 'term:vi'
 
-    if re.match(r'.* > xonsh', t):
-        return 'term:xonsh'
-    if re.match(r'.* > weechat', t):
-        return 'term:weechat'
+    m = re.match(r'.* > \d+ > (\w+)', t)
+    if m:
+        if m.group(1) in ('nmtui', 'nmtui-connect'):
+            return ngram_keylogger.CONTEXT_IGNORE
+        return f'term:{m.group(1)}'
     if re.match(r'.* > *', t):
         return 'term:other'
     return 'other'
@@ -115,7 +121,7 @@ action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
     ngram_keylogger.filter.shift_printables,
     ngram_keylogger.filter.abbreviate_controls,
     ngram_keylogger.filter.make_replace(CUSTOM_REPLACEMENT_TABLE),
+    sway_corrections,
     ngram_keylogger.filter.make_process_scan(detect_prompters,
                                              PROMPTERS_RESCAN),
-    sway_corrections,
 ])
