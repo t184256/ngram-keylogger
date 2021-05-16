@@ -18,24 +18,24 @@ CUSTOM_REPLACEMENT_TABLE = {
 }
 
 
-async def action_generator_(event_and_context_gen):
+async def action_generator_(event_and_extras_gen):
     """
     Converts evdev events to sequences of actions like
     'a', 'Y', '.', '&', 'control-shift-c', 'Left+' or 'close window'.
     """
-    gen = event_and_context_gen
+    gen = event_and_extras_gen
     gen = ngram_keylogger.aspect.keys_only(gen)
     gen = ngram_keylogger.aspect.inactivity(gen, timeout=REST_DURATION)
     gen = ngram_keylogger.aspect.modifiers(gen)
     gen = ngram_keylogger.aspect.repeating(gen)
 
-    async for event, context in gen:
-        if context['after_inactivity']:
+    async for event, extras in gen:
+        if extras['after_inactivity']:
             # click.echo('-flush-')
             for i in range(3):
                 yield ngram_keylogger.NOTHING
-        repeat = context['repeat']
-        active_modifiers_prefix = context['active_modifiers_prefix']
+        repeat = extras['repeat']
+        active_modifiers_prefix = extras['active_modifiers_prefix']
 
         short = ngram_keylogger.util.short_key_name(event.code)
         short = active_modifiers_prefix + short

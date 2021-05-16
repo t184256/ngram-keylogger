@@ -3,7 +3,7 @@
 import evdev
 
 
-async def keys_only(event_and_context_gen):
-    async for event, context in event_and_context_gen:
+async def keys_only(event_and_extras_gen):
+    async for event, extras in event_and_extras_gen:
         if event.type == evdev.ecodes.EV_KEY:
-            yield event, context
+            yield event, extras

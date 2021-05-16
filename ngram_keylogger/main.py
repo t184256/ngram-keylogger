@@ -38,7 +38,7 @@ def collect(device_path, config):
     action_generator = config['action_generator']
 
     statsdb = ngram_keylogger.db.StatsDB(DBPATH)
-    event_and_context_queue = asyncio.Queue()
+    event_and_extras_queue = asyncio.Queue()
 
     async def shutdown(sig, loop):
         click.echo(f'Caught {sig.name}')
@@ -49,7 +49,7 @@ def collect(device_path, config):
         click.echo('Flushing statistics...')
         statsdb.save_to_disk()
         click.echo('Stopping...')
-        await event_and_context_queue.join()
+        await event_and_extras_queue.join()
         loop.stop()
 
     async def collect_events(device_path):
@@ -58,12 +58,12 @@ def collect(device_path, config):
         click.echo(f'Opened device {device_path}.')
         async for event in device.async_read_loop():
             # click.echo(evdev.categorize(event), sep=': ')
-            await event_and_context_queue.put((event, {}))
+            await event_and_extras_queue.put((event, {}))
 
-    async def unwind_queue(event_and_context_queue):
+    async def unwind_queue(event_and_extras_queue):
         while True:
-            event, context = await event_and_context_queue.get()
-            yield event, context
+            event, extras = await event_and_extras_queue.get()
+            yield event, extras
 
     for device in device_path:
         asyncio.ensure_future(collect_events(device))
@@ -74,7 +74,7 @@ def collect(device_path, config):
                                 asyncio.create_task(shutdown(sig, loop)))
 
     async def process_actions():
-        async for a in action_generator(unwind_queue(event_and_context_queue)):
+        async for a in action_generator(unwind_queue(event_and_extras_queue)):
             statsdb.account_for_action(a)
     try:
         loop.run_until_complete(process_actions())

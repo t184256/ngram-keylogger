@@ -14,10 +14,10 @@ MODIFIERS = {
 }
 
 
-async def modifiers(event_and_context_gen):
+async def modifiers(event_and_extras_gen):
     active_modifiers = set()
     active_modifiers_prefix = ''
-    async for event, context in event_and_context_gen:
+    async for event, extras in event_and_extras_gen:
         if event.code in MODIFIERS:
             if event.value:
                 active_modifiers.add(event.code)
@@ -27,6 +27,6 @@ async def modifiers(event_and_context_gen):
                                               for c, m in MODIFIERS.items()
                                               if c in active_modifiers)
             continue
-        yield event, {**context,
+        yield event, {**extras,
                       'active_modifiers': active_modifiers,
                       'active_modifiers_prefix': active_modifiers_prefix}
