@@ -32,17 +32,6 @@ DBPATH = '/var/lib/ngram-keylogger/db.sqlite'
 # action generator (TODO: move to config)
 
 
-ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
-DIGITS, SHIFTED_DIGITS = '1234567890', '!@#$%^&*()'
-PUNCTUATION, SHIFTED_PUNCTUATION = "~,./;'[]\\-=", r'`<>?:"{}|_+'
-PRINTABLES = ALPHABET + DIGITS + PUNCTUATION
-SHIFTED_PRINTABLES = ALPHABET.upper() + SHIFTED_DIGITS + SHIFTED_PUNCTUATION
-assert len(PRINTABLES) == len(SHIFTED_PRINTABLES)
-SHIFTED_REPLACEMENT_TABLE = {
-    f'shift-{c}': shifted_c
-    for c, shifted_c in zip(PRINTABLES, SHIFTED_PRINTABLES)
-}
-CONTROL_REPLACEMENT_TABLE = {f'control-{c}': f'^{c.upper()}' for c in ALPHABET}
 CUSTOM_REPLACEMENT_TABLE = {
     'alt-meta-q': 'workspace-1',
     'alt-meta-w': 'workspace-2',
@@ -51,15 +40,11 @@ CUSTOM_REPLACEMENT_TABLE = {
     'alt-meta-g': 'workspace-5',
     'alt-meta-y': 'window-move-to',
     'shift-backspace': 'backspace',  # keyboard firmware bug
-}
-CUSTOM_SKIPLIST = {
-    'alt-meta-f11',
-    'alt-meta-f12',
+    'alt-meta-f11': None,  # used to light up a meta mode indicator
+    'alt-meta-f12': None,  # used to light up a meta mode indicator
 }
 
 
-
-# TODO: do another layer of aspectful filtering, but this time on results?
 async def action_generator_(event_and_context_gen):
     """
     Converts evdev events to sequences of actions like
@@ -70,6 +55,7 @@ async def action_generator_(event_and_context_gen):
     gen = ngram_keylogger.aspect.inactivity(gen, timeout=REST_DURATION)
     gen = ngram_keylogger.aspect.modifiers(gen)
     gen = ngram_keylogger.aspect.repeating(gen)
+
     async for event, context in gen:
         if context['after_inactivity']:
             # click.echo('-flush-')
@@ -80,19 +66,14 @@ async def action_generator_(event_and_context_gen):
 
         short = ngram_keylogger.util.short_key_name(event.code)
         short = active_modifiers_prefix + short
-        if short in CUSTOM_SKIPLIST:
-            continue
-        if short in SHIFTED_REPLACEMENT_TABLE:
-            short = SHIFTED_REPLACEMENT_TABLE[short]
-        if short in CONTROL_REPLACEMENT_TABLE:
-            short = CONTROL_REPLACEMENT_TABLE[short]
-        if short in CUSTOM_REPLACEMENT_TABLE:
-            short = CUSTOM_REPLACEMENT_TABLE[short]
         yield short + ('+' if repeat else '')
 
 
 action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
     ngram_keylogger.filter.t184256_russian,
+    ngram_keylogger.filter.shift_printables,
+    ngram_keylogger.filter.abbreviate_controls,
+    ngram_keylogger.filter.make_replace(CUSTOM_REPLACEMENT_TABLE),
 ])
 
 
