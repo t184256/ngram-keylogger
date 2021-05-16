@@ -62,7 +62,7 @@ class Context:
         if not self._unsaved_actions:
             return
         if self._unsaved_actions < SAVE_MIN:
-            click.echo(f'Context {self._context}: '
+            click.echo(f'Context {self.name}: '
                        f'refusing to save {self._unsaved_actions} '
                        f'< {SAVE_MIN} actions to disk.')
             return
