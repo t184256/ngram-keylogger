@@ -17,10 +17,7 @@ CUSTOM_REPLACEMENT_TABLE = {
     'alt-meta-f': 'workspace-3',
     'alt-meta-p': 'workspace-4',
     'alt-meta-g': 'workspace-5',
-    'alt-meta-y': 'window-move-to',
     'shift-backspace': 'backspace',  # keyboard firmware bug
-    'alt-meta-f11': None,  # used to light up a meta mode indicator
-    'alt-meta-f12': None,  # used to light up a meta mode indicator
 }
 
 
@@ -30,12 +27,12 @@ def detect_prompters(p):
             return p.name()
 
 
-def context_by_title(t):
-    if re.match('.*Mozilla Firefox$', t):
-        return 'browser'
-
+def context_name(t):
     if re.match(r'^\[\d+\]@$' + HOSTNAME, t):  # gpg password prompt
         return ngram_keylogger.CONTEXT_IGNORE
+
+    if re.match('.*Mozilla Firefox$', t):
+        return 'browser'
 
     m = re.match(rf'.* > vi > \[(\w+)\].* > .* \[(INS|RPL|VIL|VIB)\]$', t)
     if m:
@@ -79,9 +76,38 @@ async def action_generator_(event_and_extras_gen):
         key = short + ('+' if repeat else '')
 
         window_title = await current_window_titles.__anext__()
-        context = context_by_title(window_title)
+        context = context_name(window_title)
 
         yield key, context
+
+
+async def sway_corrections(gen):
+    D = ('left', 'up',  'down', 'right')
+    D_ = {'home': 'left', 'pageup': 'up', 'pagedown': 'down', 'end': 'right'}
+    sway_mode = None
+    while True:
+        async for action, context in gen:
+            if action == 'alt-meta-f11':
+                sway_mode = 'meta'
+                continue
+            if action == 'alt-meta-f12':
+                sway_mode = None
+                continue
+            if sway_mode == 'meta' and action == 'alt-meta-y':
+                sway_mode = 'move'
+                continue
+            if sway_mode == 'meta' and action in D:
+                action = f'focus-{action}'
+            if sway_mode == 'move' and action in D:
+                action = f'move-{action}'
+                sway_mode = 'meta'
+            if sway_mode == 'move' and action in D_:
+                action = f'move-workspace-{D_[action]}'
+                sway_mode = 'meta'
+            if sway_mode == 'move' and action.startswith('workspace-'):
+                action = f'move-to-{action}'
+                sway_mode = 'meta'
+            yield action, context
 
 
 action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
@@ -91,4 +117,5 @@ action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
     ngram_keylogger.filter.make_replace(CUSTOM_REPLACEMENT_TABLE),
     ngram_keylogger.filter.make_process_scan(detect_prompters,
                                              PROMPTERS_RESCAN),
+    sway_corrections,
 ])
