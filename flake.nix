@@ -13,9 +13,10 @@
             pname = "ngram-keylogger";
             version = "0.0.1";
             src = ./.;
-            propagatedBuildInputs = with pkgs; [
-              python3Packages.click
-              python3Packages.evdev
+            propagatedBuildInputs = with pkgs.python3Packages; [
+              click
+              evdev
+              pyxgd
             ];
           };
           defaultPackage = ngram-keylogger;

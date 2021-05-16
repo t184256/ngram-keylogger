@@ -20,61 +20,10 @@ import evdev
 import ngram_keylogger
 
 
-REST_DURATION = 2  # seconds. Waiting longer than that breaks up n-grams.
 SAVE_MAX = 3000    # actions. Protects against differential DB analysis.
 SAVE_MIN = 300     # actions. On exit you might not have enough; discards them.
-NOTHING = '...'
 
 DBPATH = '/var/lib/ngram-keylogger/db.sqlite'
-
-
-
-# action generator (TODO: move to config)
-
-
-CUSTOM_REPLACEMENT_TABLE = {
-    'alt-meta-q': 'workspace-1',
-    'alt-meta-w': 'workspace-2',
-    'alt-meta-f': 'workspace-3',
-    'alt-meta-p': 'workspace-4',
-    'alt-meta-g': 'workspace-5',
-    'alt-meta-y': 'window-move-to',
-    'shift-backspace': 'backspace',  # keyboard firmware bug
-    'alt-meta-f11': None,  # used to light up a meta mode indicator
-    'alt-meta-f12': None,  # used to light up a meta mode indicator
-}
-
-
-async def action_generator_(event_and_context_gen):
-    """
-    Converts evdev events to sequences of actions like
-    'a', 'Y', '.', '&', 'control-shift-c', 'Left+' or 'close window'.
-    """
-    gen = event_and_context_gen
-    gen = ngram_keylogger.aspect.keys_only(gen)
-    gen = ngram_keylogger.aspect.inactivity(gen, timeout=REST_DURATION)
-    gen = ngram_keylogger.aspect.modifiers(gen)
-    gen = ngram_keylogger.aspect.repeating(gen)
-
-    async for event, context in gen:
-        if context['after_inactivity']:
-            # click.echo('-flush-')
-            for i in range(3):
-                yield NOTHING
-        repeat = context['repeat']
-        active_modifiers_prefix = context['active_modifiers_prefix']
-
-        short = ngram_keylogger.util.short_key_name(event.code)
-        short = active_modifiers_prefix + short
-        yield short + ('+' if repeat else '')
-
-
-action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
-    ngram_keylogger.filter.t184256_russian,
-    ngram_keylogger.filter.shift_printables,
-    ngram_keylogger.filter.abbreviate_controls,
-    ngram_keylogger.filter.make_replace(CUSTOM_REPLACEMENT_TABLE),
-])
 
 
 # Stats database
@@ -106,14 +55,14 @@ class StatsDB:
                             f'(count INT NOT NULL, {a_column_defs}, '
                             f' PRIMARY KEY ({a_column_names}))')
         click.echo(f'Database {DBPATH} is OK.')
-        self._latest_actions = [NOTHING] * 3
+        self._latest_actions = [ngram_keylogger.NOTHING] * 3
         self._in_memory_counters = [collections.Counter() for i in range(3)]
         self._unsaved_actions = 0
 
     def flush_pipeline(self):
         """ Called when inactivity is detected. """
         for _ in range(3):
-            self.account_for_action(NOTHING)
+            self.account_for_action(ngram_keylogger.NOTHING)
 
     def account_for_action(self, action):
         self._latest_actions.pop(0)
@@ -125,7 +74,7 @@ class StatsDB:
             self.save_to_disk()
 
     def account_for_ngram(self, ngram):
-        if not all(e == NOTHING for e in ngram):
+        if not all(e == ngram_keylogger.NOTHING for e in ngram):
             counter = self._in_memory_counters[len(ngram) - 1]
             counter[tuple(ngram)] += 1
 
@@ -163,8 +112,12 @@ def cli():
 @cli.command()
 @click.argument('device_path', nargs=-1, required=True,
                 type=click.Path(readable=True))
-def collect(device_path):
+@click.option('--config', default=ngram_keylogger.config.default_path(),
+              type=click.Path(readable=True))
+def collect(device_path, config):
     """ Collects keystrokes, saves them to disk. """
+    config = ngram_keylogger.config.read(config)
+    action_generator = config['action_generator']
 
     statsdb = StatsDB()
     event_and_context_queue = asyncio.Queue()
@@ -208,7 +161,7 @@ def collect(device_path):
     try:
         loop.run_until_complete(process_actions())
     except asyncio.exceptions.CancelledError:
-        print('Stopped.')
+        click.echo('Stopped.')
 
 
 if __name__ == '__main__':
