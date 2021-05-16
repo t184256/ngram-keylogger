@@ -17,6 +17,9 @@ import sqlite3
 import click
 import evdev
 
+import ngram_keylogger
+
+
 REST_DURATION = 2  # seconds. Waiting longer than that breaks up n-grams.
 SAVE_MAX = 3000    # actions. Protects against differential DB analysis.
 SAVE_MIN = 300     # actions. On exit you might not have enough; discards them.
@@ -24,75 +27,6 @@ NOTHING = '...'
 
 DBPATH = '/var/lib/ngram-keylogger/db.sqlite'
 
-
-# helpers for action generators
-
-async def unwind_queue(event_and_context_queue):
-    while True:
-        event, context = await event_and_context_queue.get()
-        #event_and_context_queue.task_done()  # TODO: do I need this?
-        yield event, context
-
-
-async def aspect_keys_only(event_and_context_queue):
-    async for event, context in event_and_context_queue:
-        if event.type == evdev.ecodes.EV_KEY:
-            yield event, context
-
-
-async def aspect_repeating(event_and_context_queue):
-    active_repeating = set()
-    async for event, context in event_and_context_queue:
-        if event.value == 0:  # release
-            if event.code in active_repeating:
-                active_repeating.remove(event.code)
-            continue
-        repeat = event.value == 2
-        if repeat and event.code in active_repeating:
-            continue
-        if repeat:
-            active_repeating.add(event.code)
-        yield event, {**context,
-                      'active_repeating': active_repeating, 'repeat': repeat}
-
-
-MODIFIERS = {
-    evdev.ecodes.KEY_LEFTCTRL: 'control',
-    evdev.ecodes.KEY_LEFTALT: 'alt',
-    evdev.ecodes.KEY_LEFTMETA: 'meta',
-    evdev.ecodes.KEY_LEFTSHIFT: 'shift',
-    evdev.ecodes.KEY_RIGHTCTRL: 'control',
-    evdev.ecodes.KEY_RIGHTALT: 'alt',
-    evdev.ecodes.KEY_RIGHTMETA: 'meta',
-    evdev.ecodes.KEY_RIGHTSHIFT: 'shift',
-}
-
-
-async def aspect_modifiers(event_and_context_queue):
-    active_modifiers = set()
-    active_modifiers_prefix = ''
-    async for event, context in event_and_context_queue:
-        if event.code in MODIFIERS:
-            if event.value:
-                active_modifiers.add(event.code)
-            elif event.code in active_modifiers:
-                active_modifiers.remove(event.code)
-            active_modifiers_prefix = ''.join(f'{m}-'
-                                              for c, m in MODIFIERS.items()
-                                              if c in active_modifiers)
-            continue
-        yield event, {**context,
-                      'active_modifiers': active_modifiers,
-                      'active_modifiers_prefix': active_modifiers_prefix}
-
-
-async def aspect_inactivity(event_and_context_queue, timeout):
-    prev_event_time = None
-    async for event, context in event_and_context_queue:
-        inactivity = (not prev_event_time
-                      or event.timestamp() - prev_event_time > timeout)
-        yield event, {**context, 'after_inactivity': inactivity}
-        prev_event_time = event.timestamp()
 
 
 # action generator (TODO: move to config)
@@ -123,45 +57,19 @@ CUSTOM_SKIPLIST = {
     'alt-meta-f12',
 }
 
-#SINGLES = evdev.util.find_ecodes_by_regex(r'KEY_.')
-#SINGLES_NAMES = evdev.util.resolve_ecodes(ecodes.KEY, SINGLES)
-KEY_TO_CHARACTER = {
-    evdev.ecodes.KEY_GRAVE: '~',
-    evdev.ecodes.KEY_COMMA: ',',
-    evdev.ecodes.KEY_DOT: '.',
-    evdev.ecodes.KEY_SLASH: '/',
-    evdev.ecodes.KEY_SEMICOLON: ';',
-    evdev.ecodes.KEY_APOSTROPHE: "'",
-    evdev.ecodes.KEY_LEFTBRACE: '[',
-    evdev.ecodes.KEY_RIGHTBRACE: ']',
-    evdev.ecodes.KEY_BACKSLASH: '\\',
-    evdev.ecodes.KEY_MINUS: '-',
-    evdev.ecodes.KEY_EQUAL: '=',
-}
-
-
-def short_key_name(key_code):
-    if key_code in KEY_TO_CHARACTER:
-        return KEY_TO_CHARACTER[key_code]
-    s = evdev.ecodes.KEY[key_code]
-    s = s[0] if isinstance(s, list) else s
-    if s.startswith('KEY_'):
-        s = s.replace('KEY_', '', 1)
-    s = s.lower()
-    return s
 
 
 # TODO: do another layer of aspectful filtering, but this time on results?
-async def action_generator_(event_and_context_queue):
+async def action_generator_(event_and_context_gen):
     """
     Converts evdev events to sequences of actions like
     'a', 'Y', '.', '&', 'control-shift-c', 'Left+' or 'close window'.
     """
-    gen = unwind_queue(event_and_context_queue)
-    gen = aspect_keys_only(gen)
-    gen = aspect_inactivity(gen, timeout=REST_DURATION)
-    gen = aspect_modifiers(gen)
-    gen = aspect_repeating(gen)
+    gen = event_and_context_gen
+    gen = ngram_keylogger.aspect.keys_only(gen)
+    gen = ngram_keylogger.aspect.inactivity(gen, timeout=REST_DURATION)
+    gen = ngram_keylogger.aspect.modifiers(gen)
+    gen = ngram_keylogger.aspect.repeating(gen)
     async for event, context in gen:
         if context['after_inactivity']:
             # click.echo('-flush-')
@@ -170,7 +78,7 @@ async def action_generator_(event_and_context_queue):
         repeat = context['repeat']
         active_modifiers_prefix = context['active_modifiers_prefix']
 
-        short = short_key_name(event.code)
+        short = ngram_keylogger.util.short_key_name(event.code)
         short = active_modifiers_prefix + short
         if short in CUSTOM_SKIPLIST:
             continue
@@ -183,32 +91,9 @@ async def action_generator_(event_and_context_queue):
         yield short + ('+' if repeat else '')
 
 
-QWERTY = "`QWERTYUIOP{}ASDFGHJKL:ZXCVBNM<>~qwertyuiop[]asdfghjkl;zxcvbmn,.'\""
-JCUKEN = "ЁЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЯЧСМИТЬБЮёйцукенгшщзхъфывапролджячсмитьбюэЭ"
-RUSSIAN_MAP = {en: f'ru-{ru}' for en, ru in zip(QWERTY, JCUKEN)}
-RUSSIAN_MAP.update({en: ru for en, ru in zip('!@#$%^&*()/\\',
-                                             '!"№;%:?*().,')})
-
-
-async def post_aspect_t184256_russian(gen):
-    # FIXME: doesn't work with repeats
-    while True:
-        # normal operation
-        async for action in gen:
-            if action not in ('control-compose', 'control-shift-compose'):
-                yield action  # normal operation
-            else:
-                break  # to russian handling
-        # russian
-        async for action in gen:
-            if action in RUSSIAN_MAP:
-                yield RUSSIAN_MAP[action]
-                break  # to normal handling
-            elif f'{action}+' in RUSSIAN_MAP:
-                yield RUSSIAN_MAP[action[:-1]] + '+'
-                break  # to normal handling
-
-action_generator = lambda q: post_aspect_t184256_russian(action_generator_(q))
+action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
+    ngram_keylogger.filter.t184256_russian,
+])
 
 
 # Stats database
@@ -290,7 +175,8 @@ class StatsDB:
 # CLI & main
 
 @click.group(help=__doc__)
-def cli(): pass
+def cli():
+    pass
 
 
 @cli.command()
@@ -322,6 +208,11 @@ def collect(device_path):
             # click.echo(evdev.categorize(event), sep=': ')
             await event_and_context_queue.put((event, {}))
 
+    async def unwind_queue(event_and_context_queue):
+        while True:
+            event, context = await event_and_context_queue.get()
+            yield event, context
+
     for device in device_path:
         asyncio.ensure_future(collect_events(device))
 
@@ -331,8 +222,8 @@ def collect(device_path):
                                 asyncio.create_task(shutdown(sig, loop)))
 
     async def process_actions():
-        async for action in action_generator(event_and_context_queue):
-            statsdb.account_for_action(action)
+        async for a in action_generator(unwind_queue(event_and_context_queue)):
+            statsdb.account_for_action(a)
     try:
         loop.run_until_complete(process_actions())
     except asyncio.exceptions.CancelledError:
