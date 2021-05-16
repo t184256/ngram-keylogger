@@ -4,11 +4,19 @@ import ngram_keylogger
 
 
 REST_DURATION = 2  # seconds. Waiting longer than that breaks up n-grams.
+PROMPTERS = ['i3lock', 'swaylock', 'pinentry', 'screensaver']
+PROMPTERS_RESCAN = 5
 
 CUSTOM_REPLACEMENT_TABLE = {
     'alt-meta-q': 'workspace-1',  # example replacement
     'alt-meta-x': 'workspace-2',  # example ignoring
 }
+
+
+def detect_prompters(p):
+    for s in PROMPTERS:
+        if s in p.name():
+            return p.name()
 
 
 async def action_generator_(event_and_extras_gen):
@@ -38,4 +46,6 @@ action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
     ngram_keylogger.filter.shift_printables,
     ngram_keylogger.filter.abbreviate_controls,
     ngram_keylogger.filter.make_replace(CUSTOM_REPLACEMENT_TABLE),
+    ngram_keylogger.filter.make_process_scan(detect_prompters,
+                                             PROMPTERS_RESCAN),
 ])

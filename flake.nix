@@ -16,6 +16,7 @@
             propagatedBuildInputs = with pkgs.python3Packages; [
               click
               evdev
+              psutil
               pyxgd
             ];
           };

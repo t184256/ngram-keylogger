@@ -8,6 +8,7 @@ from ngram_keylogger.filter.replace import (
     abbreviate_controls,
 )
 from ngram_keylogger.filter.skip import make_skip
+from ngram_keylogger.filter.process_scan import make_process_scan
 from ngram_keylogger.filter.t184256_russian import t184256_russian
 
 
