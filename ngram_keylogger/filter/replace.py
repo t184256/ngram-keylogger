@@ -3,13 +3,13 @@
 def make_replace(replacement_dict):
     async def replace(gen):
         while True:
-            async for action in gen:
+            async for action, context in gen:
                 if action not in replacement_dict:
-                    yield action
+                    yield action, context
                 else:
                     repl = replacement_dict[action]
                     if repl is not None:
-                        yield repl
+                        yield repl, context
     return replace
 
 

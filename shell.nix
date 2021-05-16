@@ -6,6 +6,7 @@ mkShell {
     (python3.withPackages (ps: with ps; [
       click
       evdev
+      i3ipc
       psutil
       pyxdg
     ]))

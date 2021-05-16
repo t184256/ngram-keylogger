@@ -21,16 +21,16 @@ async def t184256_russian(gen):
     # FIXME: doesn't work with repeats
     while True:
         # normal operation
-        async for action in gen:
+        async for action, context in gen:
             if action not in ('control-compose', 'control-shift-compose'):
-                yield action  # normal operation
+                yield action, context  # normal operation
             else:
                 break  # to russian handling
         # russian
-        async for action in gen:
+        async for action, context in gen:
             if action in RUSSIAN_MAP:
-                yield RUSSIAN_MAP[action]
+                yield RUSSIAN_MAP[action], context
                 break  # to normal handling
             elif f'{action}+' in RUSSIAN_MAP:
-                yield RUSSIAN_MAP[action[:-1]] + '+'
+                yield RUSSIAN_MAP[action[:-1]] + '+', context
                 break  # to normal handling

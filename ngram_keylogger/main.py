@@ -47,10 +47,10 @@ def collect(device_path, config):
             if task is not asyncio.current_task():
                 task.cancel()
         click.echo('Flushing statistics...')
-        statsdb.save_to_disk()
+        statsdb.save_all_to_disk()
         click.echo('Stopping...')
         await event_and_extras_queue.join()
-        loop.stop()
+        loop.call_soon_threadsafe(loop.stop)
 
     async def collect_events(device_path):
         click.echo(f'Opening device {device_path}...')
@@ -63,6 +63,7 @@ def collect(device_path, config):
     async def unwind_queue(event_and_extras_queue):
         while True:
             event, extras = await event_and_extras_queue.get()
+            event_and_extras_queue.task_done()
             yield event, extras
 
     for device in device_path:
@@ -74,8 +75,12 @@ def collect(device_path, config):
                                 asyncio.create_task(shutdown(sig, loop)))
 
     async def process_actions():
-        async for a in action_generator(unwind_queue(event_and_extras_queue)):
-            statsdb.account_for_action(a)
+        gen = action_generator(unwind_queue(event_and_extras_queue))
+        async for action, context in gen:
+            if action != ngram_keylogger.NOTHING:
+                statsdb.account_for_action(action, context)
+            else:
+                statsdb.flush_pipeline()
     try:
         loop.run_until_complete(process_actions())
     except asyncio.exceptions.CancelledError:

@@ -6,11 +6,11 @@ import ngram_keylogger
 def make_process_scan(func, throttle_sec):
     async def process_scan(gen):
         while True:
-            async for action in gen:
+            async for action, context in gen:
                 s = ngram_keylogger.util.cached_process_scan(func,
                                                              throttle_sec)
                 if s:
                     print(f'detected process {s} temporarily suspends logging')
                 else:
-                    yield action
+                    yield action, context
     return process_scan

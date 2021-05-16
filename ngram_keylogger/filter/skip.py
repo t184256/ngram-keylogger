@@ -3,7 +3,7 @@
 def make_skip(skip_collection):
     async def skip(gen):
         while True:
-            async for action in gen:
+            async for action, context in gen:
                 if action not in skip_collection:
-                    yield action
+                    yield action, context
     return skip

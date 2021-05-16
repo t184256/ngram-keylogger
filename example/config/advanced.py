@@ -32,14 +32,13 @@ async def action_generator_(event_and_extras_gen):
 
     async for event, extras in gen:
         if extras['after_inactivity']:
-            for i in range(3):
-                yield ngram_keylogger.NOTHING
+            yield ngram_keylogger.NOTHING, None
         repeat = extras['repeat']
         active_modifiers_prefix = extras['active_modifiers_prefix']
 
         short = ngram_keylogger.util.short_key_name(event.code)
         short = active_modifiers_prefix + short
-        yield short + ('+' if repeat else '')
+        yield short + ('+' if repeat else ''), None
 
 
 action_generator = ngram_keylogger.filter.apply_filters(action_generator_, [
