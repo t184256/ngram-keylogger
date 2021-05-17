@@ -33,8 +33,8 @@ def collect(ctx, device_path, config):
 
 
 def align(smth, width):
-    s = str(smth)
-    if isinstance(smth, int):
+    s = ngram_keylogger.query.pformat(smth)
+    if isinstance(smth, int) or isinstance(smth, float):
         return ' ' * (width - len(s)) + s
     return s + ' ' * (width - len(s))
 
@@ -49,7 +49,7 @@ def pprint(results):
             print(results)
     elif isinstance(results, tuple) and isinstance(results[0], tuple):
         # assume a rectangle
-        max_widths = [max(len(str(results[row][col]))
+        max_widths = [max(len(ngram_keylogger.query.pformat(results[row][col]))
                           for row in range(len(results)))
                       for col in range(len(results[0]))]
         for row in results:

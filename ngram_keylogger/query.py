@@ -7,6 +7,10 @@ import ngram_keylogger
 _DEFAULT_PATH = ngram_keylogger.db.DEFAULT_PATH
 
 
+def pformat(smth):
+    return f'{smth*100:.6f}%' if isinstance(smth, float) else str(smth)
+
+
 def _query(query, *parameters, db_path=_DEFAULT_PATH, limit=-1):
     with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as con:
         if limit != -1:
@@ -33,7 +37,9 @@ def keypresses_count(contexts='*', **qargs):
 
 def keypresses_by_context(contexts='*', **qargs):
     contexts_condition, contexts_values = _contexts_to_sql(contexts)
-    return _query('SELECT SUM(count), context FROM keys '
+    # FIXME: two consequtive queries can lead to inconsistent results
+    return _query('SELECT SUM(count) / CAST(? AS REAL), context FROM keys '
                   f'WHERE {contexts_condition} GROUP BY context '
                   f'ORDER by SUM(count) DESC',
+                  keypresses_count(**qargs),
                   *contexts_values, **qargs)
