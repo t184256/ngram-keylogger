@@ -100,7 +100,7 @@ def bigrams(key_filter1, key_filter2,
         return _query(f'SELECT SUM(count) {norm}, a1, a2 '
                       f'FROM bigrams WHERE {contexts_condition} '
                       f' AND {key_condition1} AND {key_condition2} '
-                      f'GROUP BY (a1, a2) ORDER by SUM(count) DESC',
+                      f'GROUP BY a1, a2 ORDER by SUM(count) DESC',
                       *([keypresses_count('bigrams', **qargs)]
                         if fraction else []),
                       *contexts_values, *key_values1, *key_values2, **qargs)
@@ -128,7 +128,7 @@ def trigrams(key_filter1, key_filter2, key_filter3,
                       f' AND {key_condition1} '
                       f' AND {key_condition2} '
                       f' AND {key_condition3} '
-                      f'GROUP BY (a1, a2) ORDER by SUM(count) DESC',
+                      f'GROUP BY a1, a2 ORDER by SUM(count) DESC',
                       *([keypresses_count('trigrams', **qargs)]
                         if fraction else []),
                       *contexts_values,
