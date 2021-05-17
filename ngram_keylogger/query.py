@@ -61,7 +61,7 @@ def keypresses_count(contexts='*', **qargs):
                   *contexts_values, **qargs)[0][0]
 
 
-def keypresses_by_context(contexts='*', **qargs):
+def keypresses_total_by_context(contexts='*', **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     # FIXME: two consequtive queries can lead to inconsistent results
     return _query('SELECT SUM(count) / CAST(? AS REAL), context FROM keys '

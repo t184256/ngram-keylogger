@@ -101,12 +101,12 @@ def keypresses_count(ctx):
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
 @click.pass_context
-def keypresses_by_context(ctx, cumulative, renormalize):
+def keypresses_total_by_context(ctx, cumulative, renormalize):
     """
     Print how many keypresses are recorded, categorized by context.
     """
-    pprint(ngram_keylogger.query.keypresses_by_context(**ctx.obj['qargs']),
-           renormalize=renormalize, cumulative=cumulative)
+    d = ngram_keylogger.query.keypresses_total_by_context(**ctx.obj['qargs'])
+    pprint(d, renormalize=renormalize, cumulative=cumulative)
 
 
 @query.command()
