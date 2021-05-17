@@ -13,6 +13,7 @@ def pformat(smth):
 
 def _query(query, *parameters, db_path=_DEFAULT_PATH, limit=-1):
     with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as con:
+        con.execute('PRAGMA case_sensitive_like = true')
         if limit != -1:
             query += ' LIMIT ?'
             parameters = parameters + (limit,)
@@ -20,26 +21,46 @@ def _query(query, *parameters, db_path=_DEFAULT_PATH, limit=-1):
         return tuple(r.fetchall())
 
 
-def _contexts_to_sql(contexts):
-    contexts = contexts.replace('*', '%')
-    contexts = contexts.replace('?', '_')
-    contexts = [contexts] if ',' not in contexts else contexts.split(',')
-    if not contexts:
+def _wildcard_sql(field_name, wildcard):
+    if wildcard.lower().startswith('literal'):
+        return f'{field_name} = ?', wildcard[len('literal')+1:]
+    wildcard = wildcard.replace('*', '%')
+    wildcard = wildcard.replace('?', '_')
+    return f'{field_name} LIKE ?', wildcard
+
+
+def _wildcards_sql(field_name, wildcards):
+    wildcards = wildcards.replace('literal-,', 'literal-/COMMA/')
+    wildcards = [wildcards] if ',' not in wildcards else wildcards.split(',')
+    wildcards = [w.replace('literal-/COMMA/', 'literal-,') for w in wildcards]
+    if not wildcards:
         return 'true', []
-    return ' OR '.join(['context LIKE ?'] * len(contexts)), tuple(contexts)
+    sv = tuple(_wildcard_sql(field_name, w) for w in wildcards)
+    return ' OR '.join(sql for sql, _ in sv), tuple(value for _, value in sv)
 
 
 def keypresses_count(contexts='*', **qargs):
-    contexts_condition, contexts_values = _contexts_to_sql(contexts)
+    contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     return _query(f'SELECT SUM(count) FROM keys WHERE {contexts_condition}',
                   *contexts_values, **qargs)[0][0]
 
 
 def keypresses_by_context(contexts='*', **qargs):
-    contexts_condition, contexts_values = _contexts_to_sql(contexts)
+    contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     # FIXME: two consequtive queries can lead to inconsistent results
     return _query('SELECT SUM(count) / CAST(? AS REAL), context FROM keys '
-                  f'WHERE {contexts_condition} GROUP BY context '
-                  f'ORDER by SUM(count) DESC',
+                  f'WHERE {contexts_condition} '
+                  f'GROUP BY context ORDER by SUM(count) DESC',
                   keypresses_count(**qargs),
                   *contexts_values, **qargs)
+
+
+def keypresses(key_filter='*', contexts='*', **qargs):
+    contexts_condition, contexts_values = _wildcards_sql('context', contexts)
+    key_filter_condition, key_filter_values = _wildcards_sql('a1', key_filter)
+    # FIXME: two consequtive queries can lead to inconsistent results
+    return _query('SELECT SUM(count) / CAST(? AS REAL), a1 FROM keys '
+                  f'WHERE {contexts_condition} AND {key_filter_condition} '
+                  f'GROUP BY a1 ORDER by SUM(count) DESC',
+                  keypresses_count(**qargs),
+                  *contexts_values, *key_filter_values, **qargs)

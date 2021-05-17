@@ -66,7 +66,8 @@ def pprint(results, cumulative=False):
 @cli.group()
 @click.pass_context
 @click.option('--contexts', default='*',
-              help='filter by contexts (e.g., `term:vi:*` or_`browser,other`)')
+              help=('filter by contexts '
+                    '(e.g., `term:*`, `term:,other` or `LITERAL-*`)'))
 @click.option('--limit', default=-1, type=int,
               help='show a maximum of this many results')
 def query(ctx, contexts, limit):
@@ -99,4 +100,18 @@ def keypresses_by_context(ctx, cumulative):
     Print how many keypresses are recorded, categorized by context.
     """
     pprint(ngram_keylogger.query.keypresses_by_context(**ctx.obj['qargs']),
+           cumulative=cumulative)
+
+
+@query.command()
+@click.option('--cumulative/--no-cumulative', default=False,
+              help='Also output cumulative sum')
+@click.argument('key_filter', required=False)
+@click.pass_context
+def keypresses(ctx, cumulative, key_filter='*'):
+    """
+    Print the most popular keypresses matching an optional filter argument.
+    """
+    pprint(ngram_keylogger.query.keypresses(**ctx.obj['qargs'],
+                                            key_filter=key_filter),
            cumulative=cumulative)
