@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # Copyright (c) 2021, see AUTHORS. Licensed under GPLv3+, see LICENSE.
 
-"""
-n-gram keylogger: typing stats that don't leak passwords
-
-Uses evdev to read the device files directly,
-and thus requires appropriate permissions.
-"""
-
 import asyncio
 import signal
 
@@ -17,27 +10,11 @@ import evdev
 import ngram_keylogger
 
 
-DBPATH = '/var/lib/ngram-keylogger/db.sqlite'
-
-
-# CLI & main
-
-@click.group(help=__doc__)
-def cli():
-    pass
-
-
-@cli.command()
-@click.argument('device_path', nargs=-1, required=True,
-                type=click.Path(readable=True))
-@click.option('--config', default=ngram_keylogger.config.default_path(),
-              type=click.Path(readable=True))
-def collect(device_path, config):
-    """ Collects keystrokes, saves them to disk. """
+def collect(device_paths, db_path, config):
     config = ngram_keylogger.config.read(config)
     action_generator = config['action_generator']
 
-    statsdb = ngram_keylogger.db.StatsDB(DBPATH)
+    statsdb = ngram_keylogger.db.StatsDB(db_path)
     event_and_extras_queue = asyncio.Queue()
 
     async def shutdown(sig, loop):
@@ -66,7 +43,7 @@ def collect(device_path, config):
             event_and_extras_queue.task_done()
             yield event, extras
 
-    for device in device_path:
+    for device in device_paths:
         asyncio.ensure_future(collect_events(device))
 
     loop = asyncio.get_event_loop()
@@ -85,7 +62,3 @@ def collect(device_path, config):
         loop.run_until_complete(process_actions())
     except asyncio.exceptions.CancelledError:
         click.echo('Stopped.')
-
-
-if __name__ == '__main__':
-    cli()

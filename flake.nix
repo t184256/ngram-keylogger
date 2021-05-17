@@ -18,8 +18,9 @@
               evdev
               i3ipc
               psutil
-              pyxgd
+              pyxdg
             ];
+            doCheck = false;
           };
           defaultPackage = ngram-keylogger;
           devShell = import ./shell.nix { inherit pkgs; };

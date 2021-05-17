@@ -8,6 +8,7 @@ import click
 
 import ngram_keylogger
 
+DEFAULT_PATH = '/var/lib/ngram-keylogger/db.sqlite'
 
 SAVE_MAX = 3000    # actions. Protects against differential DB analysis.
 SAVE_MIN = 300     # actions. On exit you might not have enough; discards them.
@@ -77,7 +78,8 @@ class StatsDB:
     def __init__(self, path):
         self._path = path
         click.echo(f'Checking database {self._path}...')
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
+        if os.path.dirname(self._path):
+            os.makedirs(os.path.dirname(self._path), exist_ok=True)
         with sqlite3.connect(self._path) as con:
             for n, table in ((1, 'keys'), (2, 'bigrams'), (3, 'trigrams')):
                 a_column_names = ', '.join(f'a{i + 1}' for i in range(n))

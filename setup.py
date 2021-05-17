@@ -7,11 +7,16 @@ setup(
     author='Alexander Sosedkin',
     author_email='monk@unboiled.info',
     description="ngram-keylogger: typing stats that don't leak passwords",
-    py_modules=['ngram_keylogger'],
-    install_requires=['Click', 'evdev'],
+    packages=[
+        'ngram_keylogger',
+        'ngram_keylogger.aspect',
+        'ngram_keylogger.filter',
+        'ngram_keylogger.util',
+    ],
+    install_requires=['Click', 'evdev', 'pyxdg', 'psutil', 'i3ipc'],
     entry_points={
         'console_scripts': [
-            'ngram-keylogger = ngram_keylogger:cli',
+            'ngram-keylogger = ngram_keylogger.app:cli',
         ],
     },
 )

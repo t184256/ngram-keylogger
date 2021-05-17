@@ -1,3 +1,3 @@
-import ngram_keylogger.main
+import ngram_keylogger.app
 
-ngram_keylogger.main.cli()
+ngram_keylogger.app.cli()
