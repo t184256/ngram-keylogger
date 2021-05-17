@@ -55,7 +55,8 @@ def _wildcards_sql(field_name, wildcards):
             tuple(value for _, value in sv))
 
 
-def keypresses_count(contexts='*', by_context=False, **qargs):
+def keypresses_count(table_name='keys',
+                     contexts='*', by_context=False, **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     if not by_context:
         return _query('SELECT SUM(count) FROM keys '
@@ -87,3 +88,53 @@ def keypresses(key_filter='*', contexts='*', by_context=False, **qargs):
                       f'GROUP BY context, a1 ORDER by SUM(count) DESC',
                       keypresses_count(**qargs),
                       *contexts_values, *key_filter_values, **qargs)
+
+
+def bigrams(key_filter1, key_filter2, contexts='*', by_context=False, **qargs):
+    contexts_condition, contexts_values = _wildcards_sql('context', contexts)
+    key_condition1, key_values1 = _wildcards_sql('a1', key_filter1)
+    key_condition2, key_values2 = _wildcards_sql('a2', key_filter2)
+    # FIXME: two consequtive queries can lead to inconsistent results
+    if not by_context:
+        return _query('SELECT SUM(count) / CAST(? AS REAL), a1, a2 '
+                      f'FROM bigrams WHERE {contexts_condition} '
+                      f' AND {key_condition1} AND {key_condition2} '
+                      f'GROUP BY (a1, a2) ORDER by SUM(count) DESC',
+                      keypresses_count('bigrams', **qargs),
+                      *contexts_values, *key_values1, *key_values2, **qargs)
+    else:
+        return _query('SELECT SUM(count) / CAST(? AS REAL), context, a1, a2 '
+                      f'FROM bigrams WHERE {contexts_condition} '
+                      f' AND {key_condition1} AND {key_condition2} '
+                      f'GROUP BY context, a1, a2 ORDER by SUM(count) DESC',
+                      keypresses_count('bigrams', **qargs),
+                      *contexts_values, *key_values1, *key_values2, **qargs)
+
+
+def trigrams(key1, key2, key3, contexts='*', by_context=False, **qargs):
+    contexts_condition, contexts_values = _wildcards_sql('context', contexts)
+    key_condition1, key_values1 = _wildcards_sql('a1', key1)
+    key_condition2, key_values2 = _wildcards_sql('a2', key2)
+    key_condition3, key_values3 = _wildcards_sql('a3', key2)
+    # FIXME: two consequtive queries can lead to inconsistent results
+    if not by_context:
+        return _query('SELECT SUM(count) / CAST(? AS REAL), a1, a2, a3 '
+                      f'FROM trigrams WHERE {contexts_condition} '
+                      f' AND {key_condition1} '
+                      f' AND {key_condition2} '
+                      f' AND {key_condition3} '
+                      f'GROUP BY (a1, a2) ORDER by SUM(count) DESC',
+                      keypresses_count('trigrams', **qargs),
+                      *contexts_values,
+                      *key_values1, *key_values2, *key_values3, **qargs)
+    else:
+        return _query('SELECT SUM(count) / CAST(? AS REAL), '
+                      'context, a1, a2, a3 '
+                      f'FROM trigrams WHERE {contexts_condition} '
+                      f' AND {key_condition1} '
+                      f' AND {key_condition2} '
+                      f' AND {key_condition3} '
+                      f'GROUP BY context, a1, a2 ORDER by SUM(count) DESC',
+                      keypresses_count('trigrams', **qargs),
+                      *contexts_values,
+                      *key_values1, *key_values2, *key_values3, **qargs)
