@@ -11,12 +11,9 @@ def pformat(smth):
     return f'{smth*100:.6f}%' if isinstance(smth, float) else str(smth)
 
 
-def _query(query, *parameters, db_path=_DEFAULT_PATH, limit=-1):
+def _query(query, *parameters, db_path=_DEFAULT_PATH):
     with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as con:
         con.execute('PRAGMA case_sensitive_like = true')
-        if limit != -1:
-            query += ' LIMIT ?'
-            parameters = parameters + (limit,)
         r = con.execute(query, parameters)
         return tuple(r.fetchall())
 

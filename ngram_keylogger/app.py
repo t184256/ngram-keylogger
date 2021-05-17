@@ -43,7 +43,7 @@ def align(smth, width):
     return s + ' ' * (width - len(s))
 
 
-def pprint(results, renormalize=False, cumulative=False):
+def pprint(results, limit=None, renormalize=False, cumulative=False):
     if isinstance(results, int):
         print(results)
     elif not results:
@@ -53,13 +53,14 @@ def pprint(results, renormalize=False, cumulative=False):
             print(results)
     elif isinstance(results, tuple) and isinstance(results[0], tuple):
         # assume a rectangle with columns of same type
-        if isinstance(results[0][0], (int, float)):
-            if renormalize:
-                total = sum(f for f, *_ in results)
-                results = tuple((f / total, *o) for f, *o in results)
-            if cumulative:
-                results = tuple((sum(f for f, *_ in results[:j+1]), *row)
-                                for j, row in enumerate(results))
+        if isinstance(results[0][0], (int, float)) and renormalize:
+            total = sum(f for f, *_ in results)
+            results = tuple((f / total, *o) for f, *o in results)
+        if limit is not None:
+            results = results[:limit]
+        if isinstance(results[0][0], (int, float)) and cumulative:
+            results = tuple((sum(f for f, *_ in results[:j+1]), *row)
+                            for j, row in enumerate(results))
         max_widths = [max(len(ngram_keylogger.query.pformat(results[row][col]))
                           for row in range(len(results)))
                       for col in range(len(results[0]))]
@@ -91,7 +92,7 @@ def query(ctx, contexts, by_context, limit):
                                    ngram_keylogger.db.DEFAULT_PATH)
     ctx.obj['qargs']['contexts'] = contexts
     ctx.obj['qargs']['by_context'] = by_context
-    ctx.obj['qargs']['limit'] = limit
+    ctx.obj['limit'] = limit
 
 
 @query.command()
@@ -107,6 +108,7 @@ def keypresses_count(ctx, fraction, cumulative, renormalize):
     """
     pprint(ngram_keylogger.query.keypresses_count(**ctx.obj['qargs'],
                                                   fraction=fraction),
+           limit=ctx.obj['limit'],
            renormalize=renormalize, cumulative=cumulative)
 
 
@@ -125,6 +127,7 @@ def keypresses(ctx, fraction, cumulative, renormalize, key_filter):
     pprint(ngram_keylogger.query.keypresses(key_filter,
                                             fraction=fraction,
                                             **ctx.obj['qargs']),
+           limit=ctx.obj['limit'],
            renormalize=renormalize, cumulative=cumulative)
 
 
@@ -144,6 +147,7 @@ def bigrams(ctx, fraction, cumulative, renormalize, key_filters):
     pprint(ngram_keylogger.query.bigrams(*key_filters,
                                          fraction=fraction,
                                          **ctx.obj['qargs']),
+           limit=ctx.obj['limit'],
            renormalize=renormalize, cumulative=cumulative)
 
 
@@ -163,4 +167,5 @@ def trigrams(ctx, fraction, cumulative, renormalize, key_filters):
     pprint(ngram_keylogger.query.trigrams(*key_filters,
                                           fraction=fraction,
                                           **ctx.obj['qargs']),
+           limit=ctx.obj['limit'],
            renormalize=renormalize, cumulative=cumulative)
