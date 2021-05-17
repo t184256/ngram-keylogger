@@ -53,8 +53,8 @@ def pprint(results, renormalize=False, cumulative=False):
             print(results)
     elif isinstance(results, tuple) and isinstance(results[0], tuple):
         # assume a rectangle with columns of same type
-        if isinstance(results[0][0], float):
-            if renormalize and isinstance(results[0][0], float):
+        if isinstance(results[0][0], (int, float)):
+            if renormalize:
                 total = sum(f for f, *_ in results)
                 results = tuple((f / total, *o) for f, *o in results)
             if cumulative:
@@ -95,62 +95,72 @@ def query(ctx, contexts, by_context, limit):
 
 
 @query.command()
+@click.option('--fraction/--count', default=False)
 @click.option('--renormalize/--no-renormalize', default=False,
               help='Renormalize to the fraction of the sum of the output')
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
 @click.pass_context
-def keypresses_count(ctx, cumulative, renormalize):
+def keypresses_count(ctx, fraction, cumulative, renormalize):
     """
     Print how many keypresses are recorded, categorized by context.
     """
-    d = ngram_keylogger.query.keypresses_count(**ctx.obj['qargs'])
-    pprint(d, renormalize=renormalize, cumulative=cumulative)
+    pprint(ngram_keylogger.query.keypresses_count(**ctx.obj['qargs'],
+                                                  fraction=fraction),
+           renormalize=renormalize, cumulative=cumulative)
 
 
 @query.command()
+@click.option('--fraction/--count', default=True)
 @click.option('--renormalize/--no-renormalize', default=False,
               help='Renormalize to the fraction of the sum of the output')
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
 @click.argument('key_filter', default='*', required=False)
 @click.pass_context
-def keypresses(ctx, cumulative, renormalize, key_filter):
+def keypresses(ctx, fraction, cumulative, renormalize, key_filter):
     """
     Print the most popular keypresses matching an optional filter argument.
     """
-    pprint(ngram_keylogger.query.keypresses(**ctx.obj['qargs'],
-                                            key_filter=key_filter),
+    pprint(ngram_keylogger.query.keypresses(key_filter,
+                                            fraction=fraction,
+                                            **ctx.obj['qargs']),
            renormalize=renormalize, cumulative=cumulative)
 
 
 @query.command()
+@click.option('--fraction/--count', default=True)
 @click.option('--renormalize/--no-renormalize', default=False,
               help='Renormalize to the fraction of the sum of the output')
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
 @click.argument('key_filters', default='*', nargs=2)
 @click.pass_context
-def bigrams(ctx, cumulative, renormalize, key_filters):
+def bigrams(ctx, fraction, cumulative, renormalize, key_filters):
     """
     Print the most popular keypresses matching the filter arguments.
     Example: --by-context query bigrams 'S' '[A-Z]' --renormalize
     """
-    pprint(ngram_keylogger.query.bigrams(*key_filters, **ctx.obj['qargs']),
+    pprint(ngram_keylogger.query.bigrams(*key_filters,
+                                         fraction=fraction,
+                                         **ctx.obj['qargs']),
            renormalize=renormalize, cumulative=cumulative)
 
 
 @query.command()
+@click.option('--fraction/--count', default=True)
 @click.option('--renormalize/--no-renormalize', default=False,
               help='Renormalize to the fraction of the sum of the output')
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
 @click.argument('key_filters', default='*', nargs=3)
 @click.pass_context
-def trigrams(ctx, cumulative, renormalize, key_filters):
+def trigrams(ctx, fraction, cumulative, renormalize, key_filters):
     """
     Print the most popular trigrams matching the filter arguments.'
-    Example: --by-context query trigrams --cumulative '*' '*' '*'
+    Example: query trigrams --count --cumulative '*' '*' '*'
     """
-    pprint(ngram_keylogger.query.trigrams(*key_filters, **ctx.obj['qargs']),
+    pprint(ngram_keylogger.query.trigrams(*key_filters,
+                                          fraction=fraction,
+                                          **ctx.obj['qargs']),
            renormalize=renormalize, cumulative=cumulative)

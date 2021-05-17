@@ -55,7 +55,7 @@ def _wildcards_sql(field_name, wildcards):
             tuple(value for _, value in sv))
 
 
-def keypresses_count(table_name='keys',
+def keypresses_count(table_name='keys', fraction=False,
                      contexts='*', by_context=False, **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     if not by_context:
@@ -63,78 +63,87 @@ def keypresses_count(table_name='keys',
                       f'WHERE {contexts_condition}',
                       *contexts_values, **qargs)[0][0]
     else:
+        norm = '/ CAST(? AS REAL)' if fraction else ''
         # FIXME: two consequtive queries can lead to inconsistent results
-        return _query('SELECT SUM(count) / CAST(? AS REAL), context FROM keys '
+        return _query(f'SELECT SUM(count) {norm}, context FROM keys '
                       f'WHERE {contexts_condition} '
                       f'GROUP BY context ORDER by SUM(count) DESC',
-                      keypresses_count(**qargs),
+                      *([keypresses_count(**qargs)] if fraction else []),
                       *contexts_values, **qargs)
 
 
-def keypresses(key_filter='*', contexts='*', by_context=False, **qargs):
+def keypresses(key_filter='*',
+               fraction=True, contexts='*', by_context=False, **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     key_filter_condition, key_filter_values = _wildcards_sql('a1', key_filter)
     # FIXME: two consequtive queries can lead to inconsistent results
+    norm = '/ CAST(? AS REAL)' if fraction else ''
     if not by_context:
-        return _query('SELECT SUM(count) / CAST(? AS REAL), a1 FROM keys '
+        return _query(f'SELECT SUM(count) {norm}, a1 FROM keys '
                       f'WHERE {contexts_condition} AND {key_filter_condition} '
                       f'GROUP BY a1 ORDER by SUM(count) DESC',
-                      keypresses_count(**qargs),
+                      *([keypresses_count(**qargs)] if fraction else []),
                       *contexts_values, *key_filter_values, **qargs)
     else:
-        return _query('SELECT SUM(count) / CAST(? AS REAL), context, a1 '
-                      'FROM keys '
+        return _query(f'SELECT SUM(count) {norm}, context, a1 FROM keys '
                       f'WHERE {contexts_condition} AND {key_filter_condition} '
                       f'GROUP BY context, a1 ORDER by SUM(count) DESC',
-                      keypresses_count(**qargs),
+                      *([keypresses_count(**qargs)] if fraction else []),
                       *contexts_values, *key_filter_values, **qargs)
 
 
-def bigrams(key_filter1, key_filter2, contexts='*', by_context=False, **qargs):
+def bigrams(key_filter1, key_filter2,
+            fraction=True, contexts='*', by_context=False, **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     key_condition1, key_values1 = _wildcards_sql('a1', key_filter1)
     key_condition2, key_values2 = _wildcards_sql('a2', key_filter2)
     # FIXME: two consequtive queries can lead to inconsistent results
+    norm = '/ CAST(? AS REAL)' if fraction else ''
     if not by_context:
-        return _query('SELECT SUM(count) / CAST(? AS REAL), a1, a2 '
+        return _query(f'SELECT SUM(count) {norm}, a1, a2 '
                       f'FROM bigrams WHERE {contexts_condition} '
                       f' AND {key_condition1} AND {key_condition2} '
                       f'GROUP BY (a1, a2) ORDER by SUM(count) DESC',
-                      keypresses_count('bigrams', **qargs),
+                      *([keypresses_count('bigrams', **qargs)]
+                        if fraction else []),
                       *contexts_values, *key_values1, *key_values2, **qargs)
     else:
-        return _query('SELECT SUM(count) / CAST(? AS REAL), context, a1, a2 '
+        return _query(f'SELECT SUM(count) {norm}, context, a1, a2 '
                       f'FROM bigrams WHERE {contexts_condition} '
                       f' AND {key_condition1} AND {key_condition2} '
                       f'GROUP BY context, a1, a2 ORDER by SUM(count) DESC',
-                      keypresses_count('bigrams', **qargs),
+                      *([keypresses_count('bigrams', **qargs)]
+                        if fraction else []),
                       *contexts_values, *key_values1, *key_values2, **qargs)
 
 
-def trigrams(key1, key2, key3, contexts='*', by_context=False, **qargs):
+def trigrams(key_filter1, key_filter2, key_filter3,
+             fraction=True, contexts='*', by_context=False, **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
-    key_condition1, key_values1 = _wildcards_sql('a1', key1)
-    key_condition2, key_values2 = _wildcards_sql('a2', key2)
-    key_condition3, key_values3 = _wildcards_sql('a3', key2)
+    key_condition1, key_values1 = _wildcards_sql('a1', key_filter1)
+    key_condition2, key_values2 = _wildcards_sql('a2', key_filter2)
+    key_condition3, key_values3 = _wildcards_sql('a3', key_filter2)
     # FIXME: two consequtive queries can lead to inconsistent results
+    norm = '/ CAST(? AS REAL)' if fraction else ''
     if not by_context:
-        return _query('SELECT SUM(count) / CAST(? AS REAL), a1, a2, a3 '
+        return _query(f'SELECT SUM(count) {norm}, a1, a2, a3 '
                       f'FROM trigrams WHERE {contexts_condition} '
                       f' AND {key_condition1} '
                       f' AND {key_condition2} '
                       f' AND {key_condition3} '
                       f'GROUP BY (a1, a2) ORDER by SUM(count) DESC',
-                      keypresses_count('trigrams', **qargs),
+                      *([keypresses_count('trigrams', **qargs)]
+                        if fraction else []),
                       *contexts_values,
                       *key_values1, *key_values2, *key_values3, **qargs)
     else:
-        return _query('SELECT SUM(count) / CAST(? AS REAL), '
-                      'context, a1, a2, a3 '
+        return _query(f'SELECT SUM(count) {norm}, context, a1, a2, a3 '
                       f'FROM trigrams WHERE {contexts_condition} '
                       f' AND {key_condition1} '
                       f' AND {key_condition2} '
                       f' AND {key_condition3} '
                       f'GROUP BY context, a1, a2 ORDER by SUM(count) DESC',
-                      keypresses_count('trigrams', **qargs),
+                      *([keypresses_count('trigrams', **qargs)]
+                        if fraction else []),
                       *contexts_values,
                       *key_values1, *key_values2, *key_values3, **qargs)
