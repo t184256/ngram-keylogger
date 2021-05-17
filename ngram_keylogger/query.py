@@ -23,10 +23,23 @@ def _query(query, *parameters, db_path=_DEFAULT_PATH, limit=-1):
 
 def _wildcard_sql(field_name, wildcard):
     if wildcard.lower().startswith('literal'):
-        return f'{field_name} = ?', wildcard[len('literal')+1:]
-    wildcard = wildcard.replace('*', '%')
-    wildcard = wildcard.replace('?', '_')
-    return f'{field_name} LIKE ?', wildcard
+        yield f'{field_name} = ?', wildcard[len('literal') + 1:]
+    if wildcard.startswith('[') and wildcard.endswith(']'):  # [a-z123]
+        chars = wildcard[1:-1]
+        i = 0
+        while i < len(chars):
+            if i + 2 < len(chars) and chars[i + 1] == '-':
+                t, f = ord(chars[i]), ord(chars[i + 2])
+                for j in range(min(t, f), max(t, f) + 1):
+                    yield f'{field_name} = ?', chr(j)
+                i += 1
+            else:
+                yield f'{field_name} = ?', chars[i]
+            i += 1
+    else:
+        wildcard = wildcard.replace('*', '%')
+        wildcard = wildcard.replace('?', '_')
+    yield f'{field_name} LIKE ?', wildcard
 
 
 def _wildcards_sql(field_name, wildcards):
@@ -35,8 +48,11 @@ def _wildcards_sql(field_name, wildcards):
     wildcards = [w.replace('literal-/COMMA/', 'literal-,') for w in wildcards]
     if not wildcards:
         return 'true', []
-    sv = tuple(_wildcard_sql(field_name, w) for w in wildcards)
-    return ' OR '.join(sql for sql, _ in sv), tuple(value for _, value in sv)
+    sv = []
+    for w in wildcards:
+        sv.extend(_wildcard_sql(field_name, w))
+    return ('(' + ' OR '.join(sql for sql, _ in sv) + ')',
+            tuple(value for _, value in sv))
 
 
 def keypresses_count(contexts='*', **qargs):
