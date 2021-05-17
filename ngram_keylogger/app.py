@@ -70,9 +70,11 @@ def query(ctx, contexts, limit):
     Output various stats from the database.
     """
     ctx.ensure_object(dict)
-    ctx.obj['contexts'] = contexts
-    ctx.obj['limit'] = limit
-    ctx.obj['qargs'] = (ctx.obj['db'], ctx.obj['contexts'], ctx.obj['limit'])
+    ctx.obj['qargs'] = {}
+    ctx.obj['qargs']['db_path'] = (ctx.obj['db'] if 'db' in ctx.obj else
+                                   ngram_keylogger.db.DEFAULT_PATH)
+    ctx.obj['qargs']['contexts'] = contexts
+    ctx.obj['qargs']['limit'] = limit
 
 
 @query.command()
@@ -81,7 +83,7 @@ def keypresses_count(ctx):
     """
     Print how many keypresses are recorded.
     """
-    pprint(ngram_keylogger.query.keypresses_count(*ctx.obj['qargs']))
+    pprint(ngram_keylogger.query.keypresses_count(**ctx.obj['qargs']))
 
 
 @query.command()
@@ -90,4 +92,4 @@ def keypresses_by_context(ctx):
     """
     Print how many keypresses are recorded, categorized by context.
     """
-    pprint(ngram_keylogger.query.keypresses_by_context(*ctx.obj['qargs']))
+    pprint(ngram_keylogger.query.keypresses_by_context(**ctx.obj['qargs']))

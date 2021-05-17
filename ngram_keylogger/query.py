@@ -2,8 +2,12 @@
 
 import sqlite3
 
+import ngram_keylogger
 
-def _query(db_path, limit, query, *parameters):
+_DEFAULT_PATH = ngram_keylogger.db.DEFAULT_PATH
+
+
+def _query(query, *parameters, db_path=_DEFAULT_PATH, limit=-1):
     with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as con:
         if limit != -1:
             query += ' LIMIT ?'
@@ -21,17 +25,15 @@ def _contexts_to_sql(contexts):
     return ' OR '.join(['context LIKE ?'] * len(contexts)), tuple(contexts)
 
 
-def keypresses_count(db_path, contexts, limit):
+def keypresses_count(contexts='*', **qargs):
     contexts_condition, contexts_values = _contexts_to_sql(contexts)
-    return _query(db_path, limit,
-                  f'SELECT SUM(count) FROM keys WHERE {contexts_condition}',
-                  *contexts_values)[0][0]
+    return _query(f'SELECT SUM(count) FROM keys WHERE {contexts_condition}',
+                  *contexts_values, **qargs)[0][0]
 
 
-def keypresses_by_context(db_path, contexts, limit):
+def keypresses_by_context(contexts='*', **qargs):
     contexts_condition, contexts_values = _contexts_to_sql(contexts)
-    return _query(db_path, limit,
-                  'SELECT SUM(count), context FROM keys '
+    return _query('SELECT SUM(count), context FROM keys '
                   f'WHERE {contexts_condition} GROUP BY context '
                   f'ORDER by SUM(count) DESC',
-                  *contexts_values)
+                  *contexts_values, **qargs)
