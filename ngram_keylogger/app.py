@@ -53,7 +53,8 @@ def pprint(results):
                           for row in range(len(results)))
                       for col in range(len(results[0]))]
         for row in results:
-            print('|'.join(align(x, max_widths[i]) for i, x in enumerate(row)))
+            print(' | '.join(align(x, max_widths[i])
+                             for i, x in enumerate(row)))
     else:
         print('warning: unknown format')
         print(results)
