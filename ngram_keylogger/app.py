@@ -21,6 +21,8 @@ def cli(ctx, db):
     ctx.obj['db'] = db
 
 
+# collect
+
 @cli.command()
 @click.argument('device_path', nargs=-1, required=True,
                 type=click.Path(readable=True))
@@ -31,6 +33,8 @@ def collect(ctx, device_path, config):
     """ Collects keystrokes, saves them to disk. """
     ngram_keylogger.collect.collect(device_path, ctx.obj['db'], config)
 
+
+# pretty-printing for query
 
 def align(smth, width):
     s = ngram_keylogger.query.pformat(smth)
@@ -67,14 +71,17 @@ def pprint(results, renormalize=False, cumulative=False):
         print(results)
 
 
+# query
+
 @cli.group()
 @click.pass_context
 @click.option('--contexts', default='*',
               help=('filter by contexts '
                     '(e.g., `term:*`, `term:,other` or `LITERAL-*`)'))
+@click.option('--by-context/--combine-contexts', default=False)
 @click.option('--limit', default=-1, type=int,
               help='show a maximum of this many results')
-def query(ctx, contexts, limit):
+def query(ctx, contexts, by_context, limit):
     """
     Output various stats from the database.
     """
@@ -83,16 +90,8 @@ def query(ctx, contexts, limit):
     ctx.obj['qargs']['db_path'] = (ctx.obj['db'] if 'db' in ctx.obj else
                                    ngram_keylogger.db.DEFAULT_PATH)
     ctx.obj['qargs']['contexts'] = contexts
+    ctx.obj['qargs']['by_context'] = by_context
     ctx.obj['qargs']['limit'] = limit
-
-
-@query.command()
-@click.pass_context
-def keypresses_count(ctx):
-    """
-    Print how many keypresses are recorded.
-    """
-    pprint(ngram_keylogger.query.keypresses_count(**ctx.obj['qargs']))
 
 
 @query.command()
@@ -101,11 +100,11 @@ def keypresses_count(ctx):
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
 @click.pass_context
-def keypresses_total_by_context(ctx, cumulative, renormalize):
+def keypresses_count(ctx, cumulative, renormalize):
     """
     Print how many keypresses are recorded, categorized by context.
     """
-    d = ngram_keylogger.query.keypresses_total_by_context(**ctx.obj['qargs'])
+    d = ngram_keylogger.query.keypresses_count(**ctx.obj['qargs'])
     pprint(d, renormalize=renormalize, cumulative=cumulative)
 
 
@@ -114,9 +113,9 @@ def keypresses_total_by_context(ctx, cumulative, renormalize):
               help='Renormalize to the fraction of the sum of the output')
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
-@click.argument('key_filter', required=False)
+@click.argument('key_filter', default='*', required=False)
 @click.pass_context
-def keypresses(ctx, cumulative, renormalize, key_filter='*'):
+def keypresses(ctx, cumulative, renormalize, key_filter):
     """
     Print the most popular keypresses matching an optional filter argument.
     """

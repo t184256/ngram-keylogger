@@ -44,7 +44,7 @@ def _wildcard_sql(field_name, wildcard):
 
 def _wildcards_sql(field_name, wildcards):
     wildcards = wildcards.replace('literal-,', 'literal-/COMMA/')
-    wildcards = [wildcards] if ',' not in wildcards else wildcards.split(',')
+    wildcards = wildcards.split(',')
     wildcards = [w.replace('literal-/COMMA/', 'literal-,') for w in wildcards]
     if not wildcards:
         return 'true', []
@@ -55,28 +55,35 @@ def _wildcards_sql(field_name, wildcards):
             tuple(value for _, value in sv))
 
 
-def keypresses_count(contexts='*', **qargs):
+def keypresses_count(contexts='*', by_context=False, **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
-    return _query(f'SELECT SUM(count) FROM keys WHERE {contexts_condition}',
-                  *contexts_values, **qargs)[0][0]
+    if not by_context:
+        return _query('SELECT SUM(count) FROM keys '
+                      f'WHERE {contexts_condition}',
+                      *contexts_values, **qargs)[0][0]
+    else:
+        # FIXME: two consequtive queries can lead to inconsistent results
+        return _query('SELECT SUM(count) / CAST(? AS REAL), context FROM keys '
+                      f'WHERE {contexts_condition} '
+                      f'GROUP BY context ORDER by SUM(count) DESC',
+                      keypresses_count(**qargs),
+                      *contexts_values, **qargs)
 
 
-def keypresses_total_by_context(contexts='*', **qargs):
-    contexts_condition, contexts_values = _wildcards_sql('context', contexts)
-    # FIXME: two consequtive queries can lead to inconsistent results
-    return _query('SELECT SUM(count) / CAST(? AS REAL), context FROM keys '
-                  f'WHERE {contexts_condition} '
-                  f'GROUP BY context ORDER by SUM(count) DESC',
-                  keypresses_count(**qargs),
-                  *contexts_values, **qargs)
-
-
-def keypresses(key_filter='*', contexts='*', **qargs):
+def keypresses(key_filter='*', contexts='*', by_context=False, **qargs):
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     key_filter_condition, key_filter_values = _wildcards_sql('a1', key_filter)
     # FIXME: two consequtive queries can lead to inconsistent results
-    return _query('SELECT SUM(count) / CAST(? AS REAL), a1 FROM keys '
-                  f'WHERE {contexts_condition} AND {key_filter_condition} '
-                  f'GROUP BY a1 ORDER by SUM(count) DESC',
-                  keypresses_count(**qargs),
-                  *contexts_values, *key_filter_values, **qargs)
+    if not by_context:
+        return _query('SELECT SUM(count) / CAST(? AS REAL), a1 FROM keys '
+                      f'WHERE {contexts_condition} AND {key_filter_condition} '
+                      f'GROUP BY a1 ORDER by SUM(count) DESC',
+                      keypresses_count(**qargs),
+                      *contexts_values, *key_filter_values, **qargs)
+    else:
+        return _query('SELECT SUM(count) / CAST(? AS REAL), context, a1 '
+                      'FROM keys '
+                      f'WHERE {contexts_condition} AND {key_filter_condition} '
+                      f'GROUP BY context, a1 ORDER by SUM(count) DESC',
+                      keypresses_count(**qargs),
+                      *contexts_values, *key_filter_values, **qargs)
