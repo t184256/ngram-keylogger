@@ -39,7 +39,7 @@ def align(smth, width):
     return s + ' ' * (width - len(s))
 
 
-def pprint(results):
+def pprint(results, cumulative=False):
     if isinstance(results, int):
         print(results)
     elif not results:
@@ -48,7 +48,10 @@ def pprint(results):
         for r in results:
             print(results)
     elif isinstance(results, tuple) and isinstance(results[0], tuple):
-        # assume a rectangle
+        # assume a rectangle with columns of same type
+        if cumulative and isinstance(results[0][0], float):
+            results = tuple((sum(f for f, *_ in results[:j+1]), *row)
+                            for j, row in enumerate(results))
         max_widths = [max(len(ngram_keylogger.query.pformat(results[row][col]))
                           for row in range(len(results)))
                       for col in range(len(results[0]))]
@@ -88,9 +91,12 @@ def keypresses_count(ctx):
 
 
 @query.command()
+@click.option('--cumulative/--no-cumulative', default=False,
+              help='Also output cumulative sum')
 @click.pass_context
-def keypresses_by_context(ctx):
+def keypresses_by_context(ctx, cumulative):
     """
     Print how many keypresses are recorded, categorized by context.
     """
-    pprint(ngram_keylogger.query.keypresses_by_context(**ctx.obj['qargs']))
+    pprint(ngram_keylogger.query.keypresses_by_context(**ctx.obj['qargs']),
+           cumulative=cumulative)
