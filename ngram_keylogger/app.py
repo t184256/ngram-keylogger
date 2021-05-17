@@ -51,12 +51,13 @@ def pprint(results, limit=None, renormalize=False, cumulative=False):
     elif isinstance(results, tuple) and not isinstance(results[0], tuple):
         for r in results:
             print(results)
-    elif isinstance(results, tuple) and isinstance(results[0], tuple):
+    elif (results and isinstance(results, tuple)
+          and results[0] and isinstance(results[0], tuple)):
         # assume a rectangle with columns of same type
         if isinstance(results[0][0], (int, float)) and renormalize:
             total = sum(f for f, *_ in results)
             results = tuple((f / total, *o) for f, *o in results)
-        if limit is not None:
+        if limit is not None and limit != -1:
             results = results[:limit]
         if isinstance(results[0][0], (int, float)) and cumulative:
             results = tuple((sum(f for f, *_ in results[:j+1]), *row)
