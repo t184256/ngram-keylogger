@@ -3,6 +3,7 @@
 import collections
 import os
 import sqlite3
+import stat
 
 import click
 
@@ -89,6 +90,7 @@ class StatsDB:
                             '(count INT NOT NULL, context TEXT NOT NULL, '
                             f'{a_column_defs}, '
                             f'PRIMARY KEY (context, {a_column_names}))')
+        os.chmod(self._path, stat.S_IREAD | stat.S_IWRITE)
         click.echo(f'Database {self._path} is OK.')
         self._contexts = {'default': Context(self, 'default')}
         self._active_context = 'default'
