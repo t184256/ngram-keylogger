@@ -138,7 +138,7 @@ def keypresses(ctx, fraction, cumulative, renormalize, key_filter):
               help='Renormalize to the fraction of the sum of the output')
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
-@click.argument('key_filters', default='*', nargs=2)
+@click.argument('key_filters', default=['*']*2, nargs=2)
 @click.pass_context
 def bigrams(ctx, fraction, cumulative, renormalize, key_filters):
     """
@@ -158,7 +158,7 @@ def bigrams(ctx, fraction, cumulative, renormalize, key_filters):
               help='Renormalize to the fraction of the sum of the output')
 @click.option('--cumulative/--no-cumulative', default=False,
               help='Also output cumulative sum')
-@click.argument('key_filters', default='*', nargs=3)
+@click.argument('key_filters', default=['*']*3, nargs=3)
 @click.pass_context
 def trigrams(ctx, fraction, cumulative, renormalize, key_filters):
     """
