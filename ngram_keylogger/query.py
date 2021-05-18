@@ -119,7 +119,7 @@ def trigrams(key_filter1, key_filter2, key_filter3,
     contexts_condition, contexts_values = _wildcards_sql('context', contexts)
     key_condition1, key_values1 = _wildcards_sql('a1', key_filter1)
     key_condition2, key_values2 = _wildcards_sql('a2', key_filter2)
-    key_condition3, key_values3 = _wildcards_sql('a3', key_filter2)
+    key_condition3, key_values3 = _wildcards_sql('a3', key_filter3)
     # FIXME: two consequtive queries can lead to inconsistent results
     norm = '/ CAST(? AS REAL)' if fraction else ''
     if not by_context:
