@@ -128,7 +128,7 @@ def trigrams(key_filter1, key_filter2, key_filter3,
                       f' AND {key_condition1} '
                       f' AND {key_condition2} '
                       f' AND {key_condition3} '
-                      f'GROUP BY a1, a2 ORDER by SUM(count) DESC',
+                      f'GROUP BY a1, a2, a3 ORDER by SUM(count) DESC',
                       *([keypresses_count('trigrams', **qargs)]
                         if fraction else []),
                       *contexts_values,
@@ -139,7 +139,7 @@ def trigrams(key_filter1, key_filter2, key_filter3,
                       f' AND {key_condition1} '
                       f' AND {key_condition2} '
                       f' AND {key_condition3} '
-                      f'GROUP BY context, a1, a2 ORDER by SUM(count) DESC',
+                      f'GROUP BY context, a1, a2, a3 ORDER by SUM(count) DESC',
                       *([keypresses_count('trigrams', **qargs)]
                         if fraction else []),
                       *contexts_values,
