@@ -8,7 +8,7 @@ import ngram_keylogger
 REST_DURATION = 2   # seconds. Waiting longer than that breaks up n-grams.
 PROCESS_RESCAN = 2  # seconds. Don't rescan processes more often than that.
 HOSTNAME = socket.gethostname()
-PASSWORD_PROMPTERS = ('swaylock', 'pinentry', 'nmtui')
+PASSWORD_PROMPTERS = ('swaylock', 'pinentry', 'nmtui', 'kinit')
 PROMPTERS_RESCAN = 3
 
 CUSTOM_REPLACEMENT_TABLE = {
@@ -34,6 +34,8 @@ def detect_prompters(p):
 
 def context_name(t):
     if re.match(r'^\[\d+\]@$' + HOSTNAME, t):  # gpg password prompt
+        return ngram_keylogger.CONTEXT_IGNORE
+    if re.match(r'kinit$' + HOSTNAME, t):
         return ngram_keylogger.CONTEXT_IGNORE
 
     if re.match('.*Mozilla Firefox$', t):
