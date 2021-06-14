@@ -30,12 +30,22 @@ def collect(device_paths, db_path, config):
         loop.call_soon_threadsafe(loop.stop)
 
     async def collect_events(device_path):
-        click.echo(f'Opening device {device_path}...')
-        device = evdev.InputDevice(device_path)
-        click.echo(f'Opened device {device_path}.')
-        async for event in device.async_read_loop():
-            # click.echo(evdev.categorize(event), sep=': ')
-            await event_and_extras_queue.put((event, {}))
+        while True:
+            try:
+                click.echo(f'Opening device {device_path}...')
+                device = evdev.InputDevice(device_path)
+                click.echo(f'Opened device {device_path}.')
+            except OSError:
+                click.echo(f'Could not open {device_path}.')
+                await asyncio.sleep(15)
+                continue
+            try:
+                async for event in device.async_read_loop():
+                    # click.echo(evdev.categorize(event), sep=': ')
+                    await event_and_extras_queue.put((event, {}))
+            except OSError:
+                click.echo(f'Lost device {device_path}.')
+                await asyncio.sleep(5)
 
     async def unwind_queue(event_and_extras_queue):
         while True:
