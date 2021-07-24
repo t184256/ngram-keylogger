@@ -43,14 +43,13 @@ def align(smth, width):
     return s + ' ' * (width - len(s))
 
 
-def pprint(results, limit=None, renormalize=False, cumulative=False):
+def pprint_(results, limit=None, renormalize=False, cumulative=False):
     if isinstance(results, int):
-        print(results)
+        yield str(results)
     elif not results:
-        print('nothing')
+        yield 'nothing'
     elif isinstance(results, tuple) and not isinstance(results[0], tuple):
-        for r in results:
-            print(results)
+        yield from (str(r) for r in results)
     elif (results and isinstance(results, tuple)
           and results[0] and isinstance(results[0], tuple)):
         # assume a rectangle with columns of same type
@@ -66,11 +65,17 @@ def pprint(results, limit=None, renormalize=False, cumulative=False):
                           for row in range(len(results)))
                       for col in range(len(results[0]))]
         for row in results:
-            print(' | '.join(align(x, max_widths[i])
-                             for i, x in enumerate(row)))
+            yield (' | '.join(align(x, max_widths[i])
+                              for i, x in enumerate(row)))
     else:
-        print('warning: unknown format')
-        print(results)
+        yield('warning: unknown format')
+        yield str(results)
+
+
+def pprint(results, **kwa):
+    output = '\n'.join(pprint_(results, **kwa))
+    echo = click.echo_via_pager if output.count('\n') > 15 else click.echo
+    echo(output)
 
 
 # query
