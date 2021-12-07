@@ -33,6 +33,9 @@ def detect_prompters(p):
 
 
 def context_name(t):
+    if not isinstance(t, str):
+        return 'other'
+
     if re.match(r'^\[\d+\]@$' + HOSTNAME, t):  # gpg password prompt
         return ngram_keylogger.CONTEXT_IGNORE
     if re.match(r'kinit$' + HOSTNAME, t):
